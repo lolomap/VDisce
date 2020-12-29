@@ -1,4 +1,4 @@
-/**
+ /**
  * @name ВДиске
  * @author lolmap
  * @description Интегрирует мессенджер ВКонтакте в Дискорд
@@ -20,8 +20,14 @@ const direct = new vk_auth_module.DirectAuthorization({
 	scope: 'messages,offline'
 });
 const vk = new vk_module.VK({
-	token: 'token'
+	token: ''
 })
+
+const e = BdApi.React.createElement;
+var h1 = function(x) {return e("h1", null, x);}
+var br = function() {return e("br", null);}
+var b = function(x) {return e("b", {style: {color: "white"}}, x);}
+
 
 module.exports = class VDisce {
 
@@ -38,12 +44,11 @@ module.exports = class VDisce {
     {
     	console.log('USER_NAME:', user);
     	var send_msg = '';
-    	const e = BdApi.React.createElement;
 
-    	var h1 = function(x) {return e("h1", null, x);}
-    	var b = function(x) {return e("b", null, x);}
-    	var br = function() {return e("br", null);}
-    	var input = function() {return e("input", {type: 'text',
+    	var user_text = function(x) {return e("b", {id: 'user_name_vdisce', style: {color: "white"}}, x);}
+    	var msg_text = function(x) {return e("b", {id: 'message_text_vdisce', style: {color: "white"}}, x);}
+    	var is_attachments_text = function(x) {return e("b", {id: 'is_attachments_vdisce', style: {color: "white"}}, x);}
+    	var input = function() {return e("input", {id: 'send_input', type: 'text',
     		onChange: function(syntheticEvent) {send_msg = syntheticEvent.target.value} }); }
     	var button = function(x) {return e("button", {
     		onClick: async function() {
@@ -52,21 +57,48 @@ module.exports = class VDisce {
     				console.log('BUTTON WORKS');
     				await context.send(send_msg);
     				console.log("MESSAGE FOR SEND:", send_msg);
-
+    				document.getElementById('send_input').value = '';
     			}
     		}}, x);}
 
+
     	var content =
     	[
-    		user,
-    		'Новое сообщение:',
+    		b('Новые сообщения:'),
     		br(),
-    		msg,
+    		user_text(user),
     		br(),
-    		input(),
-    		button('Отправить')
+    		br(),
+    		msg_text(msg),
+    		br(),
+    		br()
     	];
+
+    	if (context.payload.message.attachments.length > 0)
+    		{
+    			content.push(is_attachments_text('Есть прикрепленные вложения'));
+    			content.push(br());
+    		}
+    	else
+    		{
+    			content.push(is_attachments_text(''));
+    			content.push(br());
+    		}
+
+    	content.push(input());
+    	content.push(button('Отправить'));
+
     	BdApi.alert('ВДиске', content);
+    }
+
+    re_popup(msg, context, user)
+    {
+    	console.log('USER_NAME:', user);
+    	document.getElementById('user_name_vdisce').innerHTML = user;
+    	var msgs_element = document.getElementById('message_text_vdisce');
+    	msgs_element.innerHTML = msgs_element.innerHTML + "<br>" + msg;
+    	if (context.payload.message.attachments.length > 0)
+    		document.getElementById('is_attachments_vdisce').innerHTML = 'Есть прикрепленные вложения';
     }
 
     // Required function. Called when the plugin is activated (including after reloads)s
@@ -86,6 +118,7 @@ module.exports = class VDisce {
     	
     	var message = '';
     	var user='';
+    	var last_user_name = '';
     	var user_name = '';
     	vk.updates.on('message_new', async(context) =>
     	{
@@ -96,13 +129,21 @@ module.exports = class VDisce {
     			message = context.text;
     			user = (await vk.api.users.get({user_ids: context.senderId}))[0];
     			user_name = user.first_name + ' ' + user.last_name;
-	    		await this.popup(message, context, user_name);
+    			var win = document.getElementById('send_input');
+    			if (!win || last_user_name != user_name)
+	    			await this.popup(message, context, user_name);
+	    		else
+	    		{
+	    			console.log("POPUP BLOCKED");
+	    			await this.re_popup(message, context, user_name);
+	    		}
+	    		last_user_name = user_name;
 	    	}
     	})
     	await vk.updates.start();
     }
 
-    stop() {} // Required function. Called when the plugin is deactivated
+    async stop() {await vk.updates.stop();} // Required function. Called when the plugin is deactivated
 
     observer(changes) {} 
     // Optional function. Observer for the `document`. 
