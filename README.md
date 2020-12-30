@@ -8,8 +8,15 @@ You need BetterDiscord installed
 
 Необходим установленный BetterDiscord
 #
-1.Скачайте последний релиз
 
-2. Скопируйте файлы из архива в папку с плагинами BD. (AppData/Roaming/BetterDiscord/plugins/)
+1. Download latest release
 
-3. Включите плагин и авторизируйтесь в ВК
+Скачайте последний релиз
+
+2. Copy files from archive to BD plugins folder (AppData/Roaming/BetterDiscord/plugins/)
+
+Скопируйте файлы из архива в папку с плагинами BD.
+
+3. Activate plugin and log in VK
+
+Включите плагин и авторизируйтесь в ВК
