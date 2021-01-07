@@ -25,7 +25,6 @@ var password_ = '';
 var self;
 
 let UserData = [];
-let messages = [];
 var process_id = -1;
 
 var msg_input_text = "";
@@ -76,22 +75,13 @@ var openDialogWin = async function(uid)
 	spacer.setAttribute("class", "scrollerSpacer-avRLaA da-scrollerSpacer");
 	msg_space.insertBefore(spacer, msg_space.lastChild);
 	
-	
-	let uindex = BdApi.loadData("VDisce", uid.toString());
-	if (typeof uindex !== "undefined")
-	{
-		var msgList = messages[uindex];
-		let upr = (await vk.api.users.get({user_ids: uid}))[0];
-		let fname = upr.first_name + " " + upr.last_name;
-		let sname = self.first_name + " " + self.last_name;
-		for (var i = 0; i < msgList.length; i++) {
-			let userid = msgList[i][0];
-			let msgtext = msgList[i][1];
-			if (userid == upr.id)
-				createMessageBox(fname, msgtext);
-			else if (userid == self.id)
-				createMessageBox(sname, msgtext);
-		}
+	let msgList = (await vk.api.messages.getHistory({count: 200, user_id: uid, extended: 1})).items;
+	let usr = (await vk.api.users.get({user_ids: uid}))[0];
+	for (var i = 0; i < msgList.length; i++) {
+		if(msgList[i].from_id == self.id)
+			createMessageBox(self.first_name + " " + self.last_name, msgList[i].text);
+		else if(msgList[i].from_id == uid)
+			createMessageBox(usr.first_name + " " + usr.last_name, msgList[i].text);
 	}
 
 	let input_el = document.getElementById("vdisce-dialog").querySelector("[class='markup-2BOw-j da-markup slateTextArea-1Mkdgw da-slateTextArea fontSize16Padding-3Wk7zP']");
@@ -230,9 +220,6 @@ module.exports = class VDisce {
 			return false;
 		}
 
-		var messagesLoaded = BdApi.loadData("VDisce", "messages");
-		if(Array.isArray(messagesLoaded))
-			messages = messagesLoaded;
 
 		vk.updates.stop();
 		vk.updates.on("message_new", async(context) =>
@@ -252,22 +239,8 @@ module.exports = class VDisce {
 					renderUser(user);
 					BdApi.saveData("VDisce", "UserData", UserData);
 
-					messages.push([[from_user.id, context.text]]);
-					BdApi.saveData("VDisce", user.id, messages.length - 1);
 				}
-				else
-				{
-					if(typeof(BdApi.loadData("VDisce", user.id.toString())) == "undefined")
-					{
-						messages.push([[from_user.id, context.text]]);
-						BdApi.saveData("VDisce", user.id, messages.length - 1);
-					}
-					else
-					{
-						messages[BdApi.loadData("VDisce", user.id.toString())].push([from_user.id, context.text]);
-					}
-				}
-				if(document.getElementById("vdisce-dialog").vkid == user.id.toString())
+				if(document.getElementById("vdisce-dialog") !== null && document.getElementById("vdisce-dialog").vkid == user.id.toString())
 					createMessageBox(from_user.first_name + " " + from_user.last_name, context.text);
 			}
 		})
@@ -352,7 +325,6 @@ module.exports = class VDisce {
     	{
     		
     		vk.updates.stop();
-    		BdApi.saveData("VDisce", "messages", messages);
     		this.unbind_process();
     	}
     }
