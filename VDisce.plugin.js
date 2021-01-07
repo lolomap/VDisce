@@ -75,13 +75,57 @@ var openDialogWin = async function(uid)
 	spacer.setAttribute("class", "scrollerSpacer-avRLaA da-scrollerSpacer");
 	msg_space.insertBefore(spacer, msg_space.lastChild);
 	
-	let msgList = (await vk.api.messages.getHistory({count: 200, user_id: uid, extended: 1})).items;
+	let msgList = [];
+	let block = [];
+	let n = 0;
+	do
+	{
+		block = (await vk.api.messages.getHistory({count: 200, user_id: uid, extended: 1, rev: 1, offset: n})).items;
+		//console.log(block);
+		for (var i = 0; i < block.length; i++) {
+			msgList.push(block[i]);
+		}
+		n = n + 200;
+	}
+	while (block.length == 200)
+	//console.log(msgList);
+	
 	let usr = (await vk.api.users.get({user_ids: uid}))[0];
+	let content = {};
 	for (var i = 0; i < msgList.length; i++) {
+		content.text = msgList[i].text;
+		content.images = []
+		if(typeof msgList[i] !== "undefined" && typeof msgList[i].attachments !== "undefined")
+		{
+			//console.log(msgList[i]);
+			for (var j = 0; j < msgList[i].attachments.length; j++)
+			{
+				let atinfo = msgList[i].attachments[j];
+				if (atinfo.type == "photo")
+				{
+					let sizes_count = atinfo.photo.sizes.length;
+					//console.log(atinfo);
+					if(atinfo.photo.sizes[sizes_count-1].width > 400 || atinfo.photo.sizes[sizes_count-1].height > 400)
+					{
+						for (var f = 0; f < sizes_count; f++) {
+							if(atinfo.photo.sizes[f].width <= 400 || atinfo.photo.sizes[f].height <= 400)
+							{
+								content.images.push(e("img", {src: atinfo.photo.sizes[f].url}));
+								break;
+							}
+						}
+					}
+					else
+					{
+						content.images.push(e("img", {src: atinfo.photo.sizes[sizes_count-1].url}));
+					}
+				}
+			}
+		}
 		if(msgList[i].from_id == self.id)
-			createMessageBox(self.first_name + " " + self.last_name, msgList[i].text);
+			createMessageBox(self.first_name + " " + self.last_name, content);
 		else if(msgList[i].from_id == uid)
-			createMessageBox(usr.first_name + " " + usr.last_name, msgList[i].text);
+			createMessageBox(usr.first_name + " " + usr.last_name, content);
 	}
 
 	let input_el = document.getElementById("vdisce-input-msg");
@@ -104,6 +148,8 @@ var openDialogWin = async function(uid)
 
 var createMessageBox = function(name, msg)
 {
+	let txt = msg.text;
+	let img = msg.images;
 	var box = e("div",
 		{
 			class:"message-2qnXI6 da-message cozyMessage-3V1Y8y da-cozyMessage groupStart-23k01U da-groupStart wrapper-2a6GCs da-wrapper cozy-3raOZG da-cozy zalgo-jN1Ica da-zalgo",
@@ -118,7 +164,7 @@ var createMessageBox = function(name, msg)
 				e("h2", {class: "header-23xsNx da-header"},
 					e("span", {class: "headerText-3Uvj1Y da-headerText"},
 						e("span", {class: "username-1A8OIy da-username clickable-1bVtEA da-clickable", tabindex: "0"}, name))),
-				e("div", {class: "markup-2BOw-j da-markup messageContent-2qWWxC da-messageContent"}, msg)
+				e("div", {class: "markup-2BOw-j da-markup messageContent-2qWWxC da-messageContent"}, [txt, br(), img])
 			]));
 	var chat_div = document.getElementById("vdisce-dialog").querySelector("[class='scrollerInner-2YIMLh da-scrollerInner']");
 	var space = document.createElement("div");
@@ -241,7 +287,7 @@ module.exports = class VDisce {
 
 				}
 				if(document.getElementById("vdisce-dialog") !== null && document.getElementById("vdisce-dialog").getAttribute("vkid") == user.id.toString())
-					createMessageBox(from_user.first_name + " " + from_user.last_name, context.text);
+					createMessageBox(from_user.first_name + " " + from_user.last_name, context.message);
 			}
 		})
 		await vk.updates.start();
