@@ -69,7 +69,7 @@ var openDialogWin = async function(uid)
 		BdApi.ReactDOM.render(chat_div, friens_list_div);
 	else
 		BdApi.ReactDOM.render(chat_div, document.querySelector("[class='chat-3bRxxu da-chat']"))
-	document.getElementById("vdisce-dialog").innerHTML = '<div class="messagesWrapper-1sRNjr da-messagesWrapper group-spacing-16"><div class="scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP" dir="ltr" data-jump-section="global" tabindex="-1" style="overflow: hidden scroll; padding-right: 0px;"><div class="scrollerContent-WzeG7R da-scrollerContent content-3YMskv da-content"><div class="scrollerInner-2YIMLh da-scrollerInner" aria-label="Сообщения на " role="log" aria-orientation="vertical" data-list-id="chat-messages" tabindex="0" aria-live="off"></div></div></div></div><form class="form-2fGMdU da-form"><div class="channelTextArea-rNsIhG da-channelTextArea channelTextArea-2VhZ6z da-channelTextArea"><div class="scrollableContainer-2NUZem webkit-HjD9Er da-webkit"><div class="inner-MADQqc da-inner sansAttachButton-td2irx da-sansAttachButton"><div class="textArea-12jD-V da-textArea textAreaSlate-1ZzRVj da-textAreaSlate slateContainer-3Qkn2x da-slateContainer"><div class="placeholder-37qJjk da-placeholder fontSize16Padding-3Wk7zP" aria-hidden="true"></div><div aria-label="" aria-multiline="true" data-can-focus="true" data-slate-editor="true" data-key="20" contenteditable="true" class="markup-2BOw-j da-markup slateTextArea-1Mkdgw da-slateTextArea fontSize16Padding-3Wk7zP" autocorrect="off" spellcheck="true" role="textbox" data-gramm="false" style="outline: none; white-space: pre-wrap; overflow-wrap: break-word; -webkit-user-modify: read-write-plaintext-only;"><div data-slate-object="block" data-key="21" style="position: relative;"><span data-slate-object="text" data-key="22"><span data-slate-leaf="true" data-offset-key="22:0"><span data-slate-zero-width="z" data-slate-length="0">&#65279;<br></span></span></span></div></div></div></div></div></div></form>';
+	document.getElementById("vdisce-dialog").innerHTML = '<div class="messagesWrapper-1sRNjr da-messagesWrapper group-spacing-16"><div class="scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP" dir="ltr" data-jump-section="global" tabindex="-1" style="overflow: hidden scroll; padding-right: 0px;"><div class="scrollerContent-WzeG7R da-scrollerContent content-3YMskv da-content"><div class="scrollerInner-2YIMLh da-scrollerInner" aria-label="Сообщения на " role="log" aria-orientation="vertical" data-list-id="chat-messages" tabindex="0" aria-live="off"></div></div></div></div><input id="vdisce-input-msg"></input>';
 	let msg_space = document.getElementById("vdisce-dialog").querySelector("[class='scrollerInner-2YIMLh da-scrollerInner']");
 	let spacer = document.createElement("div");
 	spacer.setAttribute("class", "scrollerSpacer-avRLaA da-scrollerSpacer");
@@ -84,8 +84,7 @@ var openDialogWin = async function(uid)
 			createMessageBox(usr.first_name + " " + usr.last_name, msgList[i].text);
 	}
 
-	let input_el = document.getElementById("vdisce-dialog").querySelector("[class='markup-2BOw-j da-markup slateTextArea-1Mkdgw da-slateTextArea fontSize16Padding-3Wk7zP']");
-	
+	let input_el = document.getElementById("vdisce-input-msg");
 	var insend = async function(e)
 	{
 		//console.log("key pressed");
@@ -98,7 +97,8 @@ var openDialogWin = async function(uid)
 			input_el.value = "";
 		}
 	}
-	input_el.addEventListener('onkeyup', insend, false);
+	//input_el.addEventListener('onkeyup', insend, false);
+	input_el.onkeyup = insend;
 	//console.log(input_el);
 }
 
@@ -122,7 +122,7 @@ var createMessageBox = function(name, msg)
 			]));
 	var chat_div = document.getElementById("vdisce-dialog").querySelector("[class='scrollerInner-2YIMLh da-scrollerInner']");
 	var space = document.createElement("div");
-	chat_div.insertBefore(space, chat_div.firstChild);
+	chat_div.insertBefore(space, chat_div.lastChild);
 	BdApi.ReactDOM.render(box, space);
 }
 
@@ -240,7 +240,7 @@ module.exports = class VDisce {
 					BdApi.saveData("VDisce", "UserData", UserData);
 
 				}
-				if(document.getElementById("vdisce-dialog") !== null && document.getElementById("vdisce-dialog").vkid == user.id.toString())
+				if(document.getElementById("vdisce-dialog") !== null && document.getElementById("vdisce-dialog").getAttribute("vkid") == user.id.toString())
 					createMessageBox(from_user.first_name + " " + from_user.last_name, context.text);
 			}
 		})
