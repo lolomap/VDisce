@@ -29,6 +29,11 @@ var process_id = -1;
 
 var msg_input_text = "";
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
 var createDialogTab = function(name, uid)
 {
 	let existed_elem = document.getElementById("vdisce-tab-"+name);
@@ -61,6 +66,80 @@ var createDialogTab = function(name, uid)
 	BdApi.ReactDOM.render(TabElement, document.getElementById('vdisce-tab-'+name));
 }
 
+var getContentFromMessage = function(msg)
+{
+	const max_image_size = 400;
+	let content = {};
+	content.text = msg.text;
+	content.images = []
+	if(typeof msg !== "undefined" && typeof msg.attachments !== "undefined")
+	{
+		//console.log(msgList[i]);
+		for (var j = 0; j < msg.attachments.length; j++)
+		{
+			let atinfo = msg.attachments[j];
+			if (atinfo.type == "photo")
+			{
+				let sizes_count = atinfo.photo.sizes.length;
+				let max_size = atinfo.photo.sizes[sizes_count - 1].url;
+				content.images.push(e("img", {src: atinfo.photo.sizes[0].url,
+					onClick: function()
+					{
+						if (atinfo.photo.sizes[sizes_count-1].width > atinfo.photo.sizes[sizes_count-1].height * 1.5)
+							openPhoto(max_size, true);
+						else openPhoto(max_size, false);
+					}}));
+				/*
+				if(atinfo.photo.sizes[sizes_count-1].height > max_image_size)
+				{
+					for (var f = sizes_count - 1; f >= 0; f--) {
+						if(atinfo.photo.sizes[f].height <= max_image_size)
+						{
+							content.images.push(e("img", {src: atinfo.photo.sizes[f].url}));
+							break;
+						}
+					}
+				}
+				else
+				{
+					content.images.push(e("img", {src: atinfo.photo.sizes[sizes_count - 1].url}));
+				}
+				*/
+			}
+		}
+	}
+	return content;
+}
+
+var openPhoto = async function(url, isWidth)
+{
+	let pageWidth = document.documentElement.clientWidth;
+	let pageHeight = document.documentElement.clientHeight;
+	let neededHeight = Math.round(pageHeight / 1.5);
+	let neededWidth = Math.round(pageWidth / 1.75);
+	let img_element;
+	if(isWidth)
+		img_element = e("img", {src: url, height: neededHeight, width: neededWidth});
+	else img_element = e("img", {src: url, height: neededHeight});
+	await BdApi.alert("ВДиске", e("div", {id: "vdisce-photo-alert"}));
+	let container = document.querySelector("[class='root-1gCeng da-root small-3iVZYw fullscreenOnMobile-1bD22y da-fullscreenOnMobile']");
+	container.setAttribute("class", "root-1gCeng da-root fullscreenOnMobile-1bD22y da-fullscreenOnMobile")
+	BdApi.ReactDOM.render(img_element, document.getElementById("vdisce-photo-alert").parentElement);
+}
+
+var scrollMessagesBottom = function()
+{
+	let msg_space = document.getElementById("vdisce-dialog").querySelector("[class='scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP']");
+	msg_space.scrollTop = msg_space.scrollHeight;
+}
+var isScrolled = function()
+{
+	let msg_space = document.getElementById("vdisce-dialog").querySelector("[class='scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP']");
+	if(msg_space.scrollHeight - msg_space.scrollTop === msg_space.clientHeight)
+		return true;
+	else return false;
+}
+
 var openDialogWin = async function(uid)
 {
 	var friens_list_div = document.querySelector("[class='container-1D34oG da-container']");
@@ -91,42 +170,16 @@ var openDialogWin = async function(uid)
 	//console.log(msgList);
 	
 	let usr = (await vk.api.users.get({user_ids: uid}))[0];
-	let content = {};
-	for (var i = 0; i < msgList.length; i++) {
-		content.text = msgList[i].text;
-		content.images = []
-		if(typeof msgList[i] !== "undefined" && typeof msgList[i].attachments !== "undefined")
-		{
-			//console.log(msgList[i]);
-			for (var j = 0; j < msgList[i].attachments.length; j++)
-			{
-				let atinfo = msgList[i].attachments[j];
-				if (atinfo.type == "photo")
-				{
-					let sizes_count = atinfo.photo.sizes.length;
-					//console.log(atinfo);
-					if(atinfo.photo.sizes[sizes_count-1].width > 400 || atinfo.photo.sizes[sizes_count-1].height > 400)
-					{
-						for (var f = 0; f < sizes_count; f++) {
-							if(atinfo.photo.sizes[f].width <= 400 || atinfo.photo.sizes[f].height <= 400)
-							{
-								content.images.push(e("img", {src: atinfo.photo.sizes[f].url}));
-								break;
-							}
-						}
-					}
-					else
-					{
-						content.images.push(e("img", {src: atinfo.photo.sizes[sizes_count-1].url}));
-					}
-				}
-			}
-		}
+	let content;
+	for (var i = 0; i < msgList.length; i++)
+	{
+		content = getContentFromMessage(msgList[i]);
 		if(msgList[i].from_id == self.id)
 			createMessageBox(self.first_name + " " + self.last_name, content);
 		else if(msgList[i].from_id == uid)
 			createMessageBox(usr.first_name + " " + usr.last_name, content);
 	}
+	
 
 	let input_el = document.getElementById("vdisce-input-msg");
 	var insend = async function(e)
@@ -134,16 +187,14 @@ var openDialogWin = async function(uid)
 		//console.log("key pressed");
 		if (e.keyCode == 13)
 		{
-			console.log("ENTER WAS PRESSED");
-			console.log(input_el.value);
 			rand_id = Math.floor(Math.random() * Math.floor(1000000000));
 			await vk.api.messages.send({user_id: uid, random_id: rand_id, message: input_el.value});
 			input_el.value = "";
 		}
 	}
-	//input_el.addEventListener('onkeyup', insend, false);
 	input_el.onkeyup = insend;
-	//console.log(input_el);
+
+	scrollMessagesBottom();
 }
 
 var createMessageBox = function(name, msg)
@@ -287,7 +338,13 @@ module.exports = class VDisce {
 
 				}
 				if(document.getElementById("vdisce-dialog") !== null && document.getElementById("vdisce-dialog").getAttribute("vkid") == user.id.toString())
-					createMessageBox(from_user.first_name + " " + from_user.last_name, context.message);
+				{
+					//console.log(context);
+					let message_full_info = (await vk.api.messages.getById({message_ids: context.payload.message.id})).items[0];
+					let content = getContentFromMessage(message_full_info);
+					createMessageBox(from_user.first_name + " " + from_user.last_name, content);
+					scrollMessagesBottom();
+				}
 			}
 		})
 		await vk.updates.start();
@@ -295,6 +352,11 @@ module.exports = class VDisce {
 
 	async render()
 	{
+		await sleep(1000);
+		var isPrivate = document.querySelector("[class='privateChannels-1nO12o da-privateChannels']") !== null;
+		console.log("IsPrivate", isPrivate);
+		if (!isPrivate)
+			return false;
 		var renderUsers = async function()
 		{
 			let users = (await vk.api.users.get({user_ids: UserData}));
