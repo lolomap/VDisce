@@ -29,6 +29,8 @@ var process_id = -1;
 
 var msg_input_text = "";
 
+var log = function(...x){console.log("%c[VDisce]", "color: blue; font-style: italic;", x);}
+
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -66,71 +68,115 @@ var createDialogTab = function(name, uid)
 	BdApi.ReactDOM.render(TabElement, document.getElementById('vdisce-tab-'+name));
 }
 
+var photos_at_count = 0;
+var photos_loaded = 0;
 var getContentFromMessage = function(msg)
 {
 	const max_image_size = 400;
 	let content = {};
-	content.text = msg.text;
-	content.images = []
+	content.text = [msg.text, br()];
+	content.images = [];
+	content.doc = [];
 	if(typeof msg !== "undefined" && typeof msg.attachments !== "undefined")
 	{
-		//console.log(msgList[i]);
 		for (var j = 0; j < msg.attachments.length; j++)
 		{
 			let atinfo = msg.attachments[j];
 			if (atinfo.type == "photo")
 			{
+				photos_at_count++;
 				let sizes_count = atinfo.photo.sizes.length;
 				let max_size = atinfo.photo.sizes[sizes_count - 1].url;
 				content.images.push(e("img", {src: atinfo.photo.sizes[0].url,
 					onClick: function()
 					{
+						let iw;
+						let ih;
 						if (atinfo.photo.sizes[sizes_count-1].width > atinfo.photo.sizes[sizes_count-1].height * 1.5)
-							openPhoto(max_size, true);
-						else openPhoto(max_size, false);
+							iw = true;
+						else iw = false;
+						if (atinfo.photo.sizes[sizes_count-1].height > document.documentElement.clientHeight / 1.5)
+							ih = true;
+						else ih = false;
+						openPhoto(max_size, iw, ih);
+					},
+					onLoad: function()
+					{
+						photos_loaded++;
+						if (photos_at_count === photos_loaded)
+							scrollMessagesBottom();
 					}}));
-				/*
-				if(atinfo.photo.sizes[sizes_count-1].height > max_image_size)
-				{
-					for (var f = sizes_count - 1; f >= 0; f--) {
-						if(atinfo.photo.sizes[f].height <= max_image_size)
-						{
-							content.images.push(e("img", {src: atinfo.photo.sizes[f].url}));
-							break;
-						}
-					}
-				}
-				else
-				{
-					content.images.push(e("img", {src: atinfo.photo.sizes[sizes_count - 1].url}));
-				}
-				*/
+				content.images.push(br());
+			}
+			else if (atinfo.type == "doc")
+			{
+				let doc_el =
+				e("div", {class: "container-1ov-mD da-container"},
+					e("div", {class: "attachment-33OFj0 horizontal-2EEEnY flex-1O1GKY directionRow-3v3tfG alignCenter-1dQNNs da-attachment da-horizontal da-flex da-directionRow da-alignCenter embedWrapper-lXpS3L da-embedWrapper"},
+						e("div", {class: "attachmentInner-3vEpKt da-attachmentInner"},
+							e("div", {class: "filenameLinkWrapper-1-14c5 da-filenameLinkWrapper"},
+								e("a",
+									{
+										rel: "noreferrer noopener",
+										target: "_blank",
+										href: atinfo.doc.url,
+										class: "anchor-3Z-8Bb da-anchor anchorUnderlineOnHover-2ESHQB da-anchorUnderlineOnHover fileNameLink-9GuxCo da-fileNameLink"
+									},
+									atinfo.doc.title
+								)
+							)
+						)
+					)
+				);
+				content.doc.push(doc_el);
+				content.doc.push(br());
+			}
+			else if (atinfo.type == "sticker")
+			{
+				photos_at_count++;
+				content.images.push(e("img", {src: atinfo.sticker.images[atinfo.sticker.images.length - 2].url,
+					onLoad: function()
+					{
+						photos_loaded++;
+						if (photos_at_count === photos_loaded)
+							scrollMessagesBottom();
+					}}));
+				content.images.push(br());
 			}
 		}
 	}
 	return content;
 }
 
-var openPhoto = async function(url, isWidth)
+var openPhoto = async function(url, isWidth, isHeight)
 {
 	let pageWidth = document.documentElement.clientWidth;
 	let pageHeight = document.documentElement.clientHeight;
 	let neededHeight = Math.round(pageHeight / 1.5);
 	let neededWidth = Math.round(pageWidth / 1.75);
 	let img_element;
+	let arg = {}
 	if(isWidth)
-		img_element = e("img", {src: url, height: neededHeight, width: neededWidth});
-	else img_element = e("img", {src: url, height: neededHeight});
+		arg.width = neededWidth;
+	if (isHeight)
+		arg.height = neededHeight;
+	arg.src = url;
+	img_element = e("img", arg);
 	await BdApi.alert("ВДиске", e("div", {id: "vdisce-photo-alert"}));
 	let container = document.querySelector("[class='root-1gCeng da-root small-3iVZYw fullscreenOnMobile-1bD22y da-fullscreenOnMobile']");
 	container.setAttribute("class", "root-1gCeng da-root fullscreenOnMobile-1bD22y da-fullscreenOnMobile")
 	BdApi.ReactDOM.render(img_element, document.getElementById("vdisce-photo-alert").parentElement);
+	let button = document.querySelector("[class='button-38aScr da-button lookFilled-1Gx00P colorRed-1TFJan sizeMedium-1AC_Sl grow-q77ONN da-grow']");
+	button.textContent = "ОК";
 }
 
 var scrollMessagesBottom = function()
 {
+	log("Scroll");
 	let msg_space = document.getElementById("vdisce-dialog").querySelector("[class='scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP']");
 	msg_space.scrollTop = msg_space.scrollHeight;
+	//msg_space.lastChild.scrollIntoView(false);
+
 }
 var isScrolled = function()
 {
@@ -142,6 +188,8 @@ var isScrolled = function()
 
 var openDialogWin = async function(uid)
 {
+	photos_at_count = 0;
+	photos_loaded = 0;
 	var friens_list_div = document.querySelector("[class='container-1D34oG da-container']");
 	var chat_div = e("div", {class:"chat-3bRxxu da-chat", id: "vdisce-dialog", vkid: uid});
 	if (friens_list_div)
@@ -160,14 +208,14 @@ var openDialogWin = async function(uid)
 	do
 	{
 		block = (await vk.api.messages.getHistory({count: 200, user_id: uid, extended: 1, rev: 1, offset: n})).items;
-		//console.log(block);
+		//log(block);
 		for (var i = 0; i < block.length; i++) {
 			msgList.push(block[i]);
 		}
 		n = n + 200;
 	}
 	while (block.length == 200)
-	//console.log(msgList);
+
 	
 	let usr = (await vk.api.users.get({user_ids: uid}))[0];
 	let content;
@@ -184,7 +232,7 @@ var openDialogWin = async function(uid)
 	let input_el = document.getElementById("vdisce-input-msg");
 	var insend = async function(e)
 	{
-		//console.log("key pressed");
+		//log("key pressed");
 		if (e.keyCode == 13)
 		{
 			rand_id = Math.floor(Math.random() * Math.floor(1000000000));
@@ -194,13 +242,21 @@ var openDialogWin = async function(uid)
 	}
 	input_el.onkeyup = insend;
 
-	scrollMessagesBottom();
+	if(photos_at_count === 0)
+		scrollMessagesBottom();
 }
 
 var createMessageBox = function(name, msg)
 {
 	let txt = msg.text;
 	let img = msg.images;
+	let doc = msg.doc;
+	let out = 
+	[
+		txt,
+		img,
+		doc
+	];
 	var box = e("div",
 		{
 			class:"message-2qnXI6 da-message cozyMessage-3V1Y8y da-cozyMessage groupStart-23k01U da-groupStart wrapper-2a6GCs da-wrapper cozy-3raOZG da-cozy zalgo-jN1Ica da-zalgo",
@@ -215,7 +271,7 @@ var createMessageBox = function(name, msg)
 				e("h2", {class: "header-23xsNx da-header"},
 					e("span", {class: "headerText-3Uvj1Y da-headerText"},
 						e("span", {class: "username-1A8OIy da-username clickable-1bVtEA da-clickable", tabindex: "0"}, name))),
-				e("div", {class: "markup-2BOw-j da-markup messageContent-2qWWxC da-messageContent"}, [txt, br(), img])
+				e("div", {class: "markup-2BOw-j da-markup messageContent-2qWWxC da-messageContent"}, out)
 			]));
 	var chat_div = document.getElementById("vdisce-dialog").querySelector("[class='scrollerInner-2YIMLh da-scrollerInner']");
 	var space = document.createElement("div");
@@ -339,7 +395,7 @@ module.exports = class VDisce {
 				}
 				if(document.getElementById("vdisce-dialog") !== null && document.getElementById("vdisce-dialog").getAttribute("vkid") == user.id.toString())
 				{
-					//console.log(context);
+					//log(context);
 					let message_full_info = (await vk.api.messages.getById({message_ids: context.payload.message.id})).items[0];
 					let content = getContentFromMessage(message_full_info);
 					createMessageBox(from_user.first_name + " " + from_user.last_name, content);
@@ -354,7 +410,7 @@ module.exports = class VDisce {
 	{
 		await sleep(1000);
 		var isPrivate = document.querySelector("[class='privateChannels-1nO12o da-privateChannels']") !== null;
-		console.log("IsPrivate", isPrivate);
+		log("IsPrivate", isPrivate);
 		if (!isPrivate)
 			return false;
 		var renderUsers = async function()
