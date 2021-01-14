@@ -51,8 +51,9 @@ var createDialogTab = function(name, uid, profile_image)
 		onClick: call_oDW
 	}, e("div", {class:"layout-2DM8Md da-layout"}, 
 		[
-			e("div", {role: "img", style: {width: "50px", height: "50px"}},
-				e("img", {src: profile_image, class: "avatar-1BDn8e da-avatar clickable-1bVtEA da-clickable"})),
+			e("div", {role: "img", style: {width: "40px", height: "40px", marginRight: "12px"}},
+				e("img", {src: profile_image, class: "avatar-1BDn8e da-avatar clickable-1bVtEA da-clickable",
+					style: {width: "32px", height: "32px"}})),
 			e("div", {class:"content-3QAtGj da-content"}, 
 				e("div", {class:"nameAndDecorators-5FJ2dg da-nameAndDecorators"}, 
 					e("div", {class:"name-uJV0GL da-name"}, 
@@ -514,7 +515,7 @@ module.exports = class VDisce {
 			token: access_token
 		})
 		
-		self = (await vk.api.users.get({user_ids: (await vk.api.account.getProfileInfo()).id, fields: "photo_50"}));
+		self = (await vk.api.users.get({user_ids: (await vk.api.account.getProfileInfo()).id, fields: "photo_50"}))[0];
 
 		let MsgWinBtn = document.querySelectorAll("[class='listItem-2P_4kh da-listItem']");
 		if(MsgWinBtn != null)
