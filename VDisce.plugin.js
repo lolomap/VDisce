@@ -31,36 +31,34 @@ var msg_input_text = "";
 
 var log = function(...x){console.log("%c[VDisce]", "color: blue; font-style: italic;", x);}
 
-function sleep(ms) {
+function sleep(ms) 	
+{
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 
-var createDialogTab = function(name, uid)
+var createDialogTab = function(name, uid, profile_image)
 {
 	let existed_elem = document.getElementById("vdisce-tab-"+name);
-	//
-	//
 	if(existed_elem !== null)
 		return false;
 	let call_oDW = function() {openDialogWin(uid);}
 	var TabElement = e("a", {
 		class:"channel-2QD9_O da-channel container-2Pjhx- da-container clickable-1JJAn8 da-clickable",
-		/*aria-label:name+" (личное сообщение)",
-		aria-aetsize:4,
-		aria-posinset:2,*/
 		id:"private-channels-1",
 		tabindex:-1,
 		role:"listitem",
 		onClick: call_oDW
-		//href:"/channels/@me/0"
 	}, e("div", {class:"layout-2DM8Md da-layout"}, 
-		e("div", {class:"content-3QAtGj da-content"}, 
-			e("div", {class:"nameAndDecorators-5FJ2dg da-nameAndDecorators"}, 
-				e("div", {class:"name-uJV0GL da-name"}, 
-					e("div", {class:"overflow-WK9Ogt da-overflow"}, name))))));
+		[
+			e("div", {role: "img", style: {width: "50px", height: "50px"}},
+				e("img", {src: profile_image, class: "avatar-1BDn8e da-avatar clickable-1bVtEA da-clickable"})),
+			e("div", {class:"content-3QAtGj da-content"}, 
+				e("div", {class:"nameAndDecorators-5FJ2dg da-nameAndDecorators"}, 
+					e("div", {class:"name-uJV0GL da-name"}, 
+						e("div", {class:"overflow-WK9Ogt da-overflow"}, name))))
+		]));
 	var DialogPanel = document.querySelector("[class='content-3YMskv da-content']");
-	//DialogPanel.innerHTML = DialogPanel.innerHTML + TabElement;
 	var SpaceForE = document.createElement("div");
 	SpaceForE.setAttribute('id', 'vdisce-tab-'+name)
 	var first_dialog = document.querySelector("[class='privateChannelsHeaderContainer-3NB1K1 da-privateChannelsHeaderContainer container-2ax-kl da-container']");
@@ -70,15 +68,27 @@ var createDialogTab = function(name, uid)
 
 var photos_at_count = 0;
 var photos_loaded = 0;
-var getContentFromMessage = function(msg)
+var getContentFromMessage = async function(msg)
 {
 	const max_image_size = 400;
 	let content = {};
-	content.text = [msg.text, br()];
+	content.text = [e("span", null ,msg.text), br()];
 	content.images = [];
 	content.doc = [];
+	content.wall = [];
 	if(typeof msg !== "undefined" && typeof msg.attachments !== "undefined")
 	{
+		photos_at_count++;
+		let forwarded;
+		if(false)//typeof msg.fwd_messages !== "undefined")
+		{
+			if(msg.fwd_messages.length > 0)
+			{
+				forwarded = (await getTextForFwd(msg));
+			}
+			content.text.push(forwarded);
+		}
+
 		for (var j = 0; j < msg.attachments.length; j++)
 		{
 			let atinfo = msg.attachments[j];
@@ -143,9 +153,72 @@ var getContentFromMessage = function(msg)
 					}}));
 				content.images.push(br());
 			}
+			else if (atinfo.type == "wall")
+			{
+				try
+				{
+					let post = (await vk.api.wall.getById({posts: atinfo.wall.to_id + "_" + atinfo.wall.id}))[0];
+					let post_content = (await getContentFromMessage(post));
+					content.wall.push(
+						[
+							textToQuote(post_content.text),
+							textToQuote(post_content.images),
+							textToQuote(post_content.doc),
+							textToQuote(post_content.wall),
+							br()
+						]);
+				}
+				catch(err)
+				{
+					content.wall.push([e("b", null, "Запись со стены не доступна"), br()]);
+					log(err);
+				}
+			}
 		}
 	}
 	return content;
+}
+
+var textToQuote = function(text)
+{
+	let elem =
+		e("div",{class: "blockquoteContainer-U5TVEi da-blockquoteContainer slateBlockquoteContainer-u5zDDJ da-slateBlockquoteContainer"},
+			[
+				e("div",
+					{
+						contenteditable: false,
+						class: "blockquoteDivider-2hH8H6 da-blockquoteDivider"
+					}
+				),
+				e("blockquote", null, text)
+			]
+		);
+	return elem;
+}
+
+var getTextForFwd = async function(msg)
+{
+	let txt = [];
+	if(typeof msg.fwd_messages !== "undefined")
+	{
+		for (var i = 0; i < msg.fwd_messages.length; i++)
+		{
+			let cntnt = (await getContentFromMessage(msg.fwd_messages[i]));
+			let uinfo = (await vk.api.messages.getById({message_ids: msg.fwd_messages[i].id, extended: true})).profiles[0];
+			let name = uinfo.first_name + " " + uinfo.last_name;
+			let out = 
+			[
+				e("span", {class: "username-1A8OIy da-username clickable-1bVtEA da-clickable", tabindex: "0"}, name),
+				br(),
+				cntnt.text,
+				cntnt.images,
+				cntnt.doc
+			];
+			txt.push(textToQuote(out));
+			txt.push(textToQuote((await getTextForFwd(msg.fwd_messages[i]))));
+		}
+	}
+	return txt;
 }
 
 var openPhoto = async function(url, isWidth, isHeight)
@@ -172,7 +245,6 @@ var openPhoto = async function(url, isWidth, isHeight)
 
 var scrollMessagesBottom = function()
 {
-	log("Scroll");
 	let msg_space = document.getElementById("vdisce-dialog").querySelector("[class='scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP']");
 	msg_space.scrollTop = msg_space.scrollHeight;
 	//msg_space.lastChild.scrollIntoView(false);
@@ -196,40 +268,18 @@ var openDialogWin = async function(uid)
 		BdApi.ReactDOM.render(chat_div, friens_list_div);
 	else
 		BdApi.ReactDOM.render(chat_div, document.querySelector("[class='chat-3bRxxu da-chat']"))
-	document.getElementById("vdisce-dialog").innerHTML = '<div class="messagesWrapper-1sRNjr da-messagesWrapper group-spacing-16"><div class="scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP" dir="ltr" data-jump-section="global" tabindex="-1" style="overflow: hidden scroll; padding-right: 0px;"><div class="scrollerContent-WzeG7R da-scrollerContent content-3YMskv da-content"><div class="scrollerInner-2YIMLh da-scrollerInner" aria-label="Сообщения на " role="log" aria-orientation="vertical" data-list-id="chat-messages" tabindex="0" aria-live="off"></div></div></div></div><input id="vdisce-input-msg"></input>';
+	document.getElementById("vdisce-dialog").innerHTML = '<div class="messagesWrapper-1sRNjr da-messagesWrapper group-spacing-16"><div class="scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP" dir="ltr" data-jump-section="global" tabindex="-1" style="overflow: hidden scroll; padding-right: 0px;"><div class="scrollerContent-WzeG7R da-scrollerContent content-3YMskv da-content"><div class="scrollerInner-2YIMLh da-scrollerInner" aria-label="Сообщения на " role="log" aria-orientation="vertical" data-list-id="chat-messages" tabindex="0" aria-live="off"></div></div></div></div><div id="vdisce-input-form"><input id="vdisce-input-msg"></input></div>';
 	let msg_space = document.getElementById("vdisce-dialog").querySelector("[class='scrollerInner-2YIMLh da-scrollerInner']");
 	let spacer = document.createElement("div");
 	spacer.setAttribute("class", "scrollerSpacer-avRLaA da-scrollerSpacer");
 	msg_space.insertBefore(spacer, msg_space.lastChild);
 	
-	let msgList = [];
-	let block = [];
-	let n = 0;
-	do
-	{
-		block = (await vk.api.messages.getHistory({count: 200, user_id: uid, extended: 1, rev: 1, offset: n})).items;
-		//log(block);
-		for (var i = 0; i < block.length; i++) {
-			msgList.push(block[i]);
-		}
-		n = n + 200;
-	}
-	while (block.length == 200)
-
-	
-	let usr = (await vk.api.users.get({user_ids: uid}))[0];
-	let content;
-	for (var i = 0; i < msgList.length; i++)
-	{
-		content = getContentFromMessage(msgList[i]);
-		if(msgList[i].from_id == self.id)
-			createMessageBox(self.first_name + " " + self.last_name, content);
-		else if(msgList[i].from_id == uid)
-			createMessageBox(usr.first_name + " " + usr.last_name, content);
-	}
-	
-
+	let incontainer = document.getElementById("vdisce-input-form");
+	incontainer.setAttribute("style", "padding: 16px; height: 5%");
 	let input_el = document.getElementById("vdisce-input-msg");
+	let inputStyle = "background: #40444b;font-size: 100%;color: white;border-radius: 8px;border: 0px;width: 100%;height: 75%;";
+	input_el.setAttribute("style", inputStyle);
+	input_el.setAttribute("placeholder", "Написать пользователю");
 	var insend = async function(e)
 	{
 		//log("key pressed");
@@ -242,20 +292,45 @@ var openDialogWin = async function(uid)
 	}
 	input_el.onkeyup = insend;
 
+	let msgList = [];
+	let block = [];
+	let n = 0;
+	/*
+	do*/
+	{
+		block = (await vk.api.messages.getHistory({count: 200, user_id: uid, extended: 1, rev: 0, offset: n})).items;
+		//log(block);
+		for (var i = 0; i < block.length; i++) {
+			msgList.push(block[i]);
+		}
+		n = n + 200;
+	}
+	/*while (block.length == 200)*/
+
+	
+	let usr = (await vk.api.users.get({user_ids: uid, fields: "photo_50"}))[0];
+	let content;
+	for (var i = 0; i < msgList.length; i++)
+	{
+		content = (await getContentFromMessage(msgList[i]));
+		if(msgList[i].from_id == self.id)
+			createMessageBox(self.first_name + " " + self.last_name, content, self.photo_50);
+		else if(msgList[i].from_id == uid)
+			createMessageBox(usr.first_name + " " + usr.last_name, content, usr.photo_50);
+	}
+
 	if(photos_at_count === 0)
 		scrollMessagesBottom();
 }
 
-var createMessageBox = function(name, msg)
+var createMessageBox = function(name, msg, profile_image)
 {
-	let txt = msg.text;
-	let img = msg.images;
-	let doc = msg.doc;
 	let out = 
 	[
-		txt,
-		img,
-		doc
+		msg.text,
+		msg.images,
+		msg.doc,
+		msg.wall
 	];
 	var box = e("div",
 		{
@@ -267,7 +342,15 @@ var createMessageBox = function(name, msg)
 			{
 				class: "contents-2mQqc9 da-contents",
 				role: "document"
-			},[
+			},
+			[
+				e("img", {class: "avatar-1BDn8e da-avatar clickable-1bVtEA da-clickable", alt: " ", src: profile_image,
+					onLoad: function()
+					{
+						photos_loaded++;
+						if (photos_at_count === photos_loaded)
+							scrollMessagesBottom();
+					}}),
 				e("h2", {class: "header-23xsNx da-header"},
 					e("span", {class: "headerText-3Uvj1Y da-headerText"},
 						e("span", {class: "username-1A8OIy da-username clickable-1bVtEA da-clickable", tabindex: "0"}, name))),
@@ -275,7 +358,7 @@ var createMessageBox = function(name, msg)
 			]));
 	var chat_div = document.getElementById("vdisce-dialog").querySelector("[class='scrollerInner-2YIMLh da-scrollerInner']");
 	var space = document.createElement("div");
-	chat_div.insertBefore(space, chat_div.lastChild);
+	chat_div.insertBefore(space, chat_div.firstChild);
 	BdApi.ReactDOM.render(box, space);
 }
 
@@ -364,7 +447,7 @@ module.exports = class VDisce {
 		var renderUser = function(uobj)
 		{
 			let user_name = uobj.first_name + ' ' + uobj.last_name;
-			createDialogTab(user_name);
+			createDialogTab(user_name, uobj.photo_50);
 		}
 
 		if(!(await testAuth()))
@@ -386,19 +469,13 @@ module.exports = class VDisce {
 					from_user = self;
 				else
 					from_user = user;
-				if (!UserData.includes(user.id))
-				{
-					UserData.push(user.id);
-					renderUser(user);
-					BdApi.saveData("VDisce", "UserData", UserData);
 
-				}
 				if(document.getElementById("vdisce-dialog") !== null && document.getElementById("vdisce-dialog").getAttribute("vkid") == user.id.toString())
 				{
 					//log(context);
 					let message_full_info = (await vk.api.messages.getById({message_ids: context.payload.message.id})).items[0];
-					let content = getContentFromMessage(message_full_info);
-					createMessageBox(from_user.first_name + " " + from_user.last_name, content);
+					let content = (await getContentFromMessage(message_full_info));
+					createMessageBox(from_user.first_name + " " + from_user.last_name, content, from_user.photo_50);
 					scrollMessagesBottom();
 				}
 			}
@@ -410,23 +487,24 @@ module.exports = class VDisce {
 	{
 		await sleep(1000);
 		var isPrivate = document.querySelector("[class='privateChannels-1nO12o da-privateChannels']") !== null;
-		log("IsPrivate", isPrivate);
+		//log("IsPrivate", isPrivate);
 		if (!isPrivate)
 			return false;
-		var renderUsers = async function()
-		{
-			let users = (await vk.api.users.get({user_ids: UserData}));
-			//
-			for (var i = 0; i < users.length; i++) {
-				let user_name = users[i].first_name + ' ' + users[i].last_name;
-				createDialogTab(user_name, users[i].id);
+
+		let conv_users = []
+		let all_conv = (await vk.api.messages.getConversations({count: 200})).items;
+		for (var i = 0; i < all_conv.length; i++) {
+			if (all_conv[i].conversation.peer.type == "user")
+			{
+				conv_users.push(all_conv[i].conversation.peer.id);
 			}
 		}
-		
-		var UserDataLoaded = BdApi.loadData("VDisce", "UserData");
-		if (Array.isArray(UserDataLoaded))
-			UserData = UserDataLoaded;
-		renderUsers();
+
+		let users = (await vk.api.users.get({user_ids: conv_users, fields: "photo_50"}));
+		for (var i = 0; i < users.length; i++) {
+			let user_name = users[i].first_name + ' ' + users[i].last_name;
+			createDialogTab(user_name, users[i].id, users[i].photo_50);
+		}
 	}
 
 	async bind_process()
@@ -436,7 +514,7 @@ module.exports = class VDisce {
 			token: access_token
 		})
 		
-		self = (await vk.api.account.getProfileInfo());
+		self = (await vk.api.users.get({user_ids: (await vk.api.account.getProfileInfo()).id, fields: "photo_50"}));
 
 		let MsgWinBtn = document.querySelectorAll("[class='listItem-2P_4kh da-listItem']");
 		if(MsgWinBtn != null)
