@@ -442,20 +442,6 @@ var notificationSound = async function()
 	const audio = new Audio("https://my-files.su/Save/plazqp/nf.mp3");
 	audio.volume = 1;
 	await audio.play();
-	
-	/*
-	let eln = document.getElementById("vdisce-audio");
-	if(eln !== null)
-		eln.play();
-	else
-	{
-		let el = e("audio", {src: "https://wdho.ru/a7a9/nf.mp3", autostart: false, width: 0, height: 0, enablejavascript: true, id: "vdisce-audio"});
-		let space = document.createElement("div");
-		document.getElementsByTagName("body")[0].insertBefore(space, document.getElementsByTagName("body")[0].firstChild);
-		BdApi.ReactDOM.render(el, space);
-		eln = document.getElementById("vdisce-audio");
-		eln.play();
-	}*/
 }
 
 module.exports = class VDisce {
@@ -570,7 +556,7 @@ module.exports = class VDisce {
 				else
 					from_user = user;
 
-				if (//context.payload.message.rand_id == 0 &&
+				if (context.payload.message.rand_id == 0 &&
 					(dialog_window == null || (dialog_window !== null && dialog_window.getAttribute("vkid") !== user.id.toString())))
 				{
 					await notificationCall(user);
