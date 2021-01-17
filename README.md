@@ -1,22 +1,10 @@
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 # VDisce
-Plugin for BetterDiscord. Notificate you about new messages in VK with respond ability
-
-Плагин для BetterDiscord. Уведомляет о новых сообщениях в ВК с возможностью ответить
+Plugin for BetterDiscord. Integrate VK messanger to Discord
 
 # Instalation
-You need BetterDiscord installed
-
-Необходим установленный BetterDiscord
-#
-
-1. Download latest release
-
-Скачайте последний релиз
-
-2. Copy files from archive to BD plugins folder (AppData/Roaming/BetterDiscord/plugins/)
-
-Скопируйте файлы из архива в папку с плагинами BD.
-
-3. Activate plugin and log in VK
-
-Включите плагин и авторизируйтесь в ВК
+You need [BetterDiscord](https://betterdiscord.net/home/ "Download BetterDiscord") installed
+***
+1.  Download latest release
+2.  Copy files from archive to BD plugins folder (AppData/Roaming/BetterDiscord/plugins/)
+3.  Activate plugin and log in VK
