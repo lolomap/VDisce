@@ -89,6 +89,7 @@ var getContentFromMessage = async function(msg)
 	content.images = [];
 	content.doc = [];
 	content.wall = [];
+	content.video = [];
 	if(typeof msg !== "undefined" && typeof msg.attachments !== "undefined")
 	{
 		photos_at_count++;
@@ -178,6 +179,7 @@ var getContentFromMessage = async function(msg)
 							textToQuote(post_content.images),
 							textToQuote(post_content.doc),
 							textToQuote(post_content.wall),
+							textToQuote(post_content.video),
 							br()
 						]);
 				}
@@ -186,6 +188,41 @@ var getContentFromMessage = async function(msg)
 					content.wall.push([e("b", null, "Запись со стены не доступна"), br()]);
 					log(err);
 				}
+			}
+			else if (atinfo.type == "video")
+			{
+				let player = (await vk.api.video.get({videos: atinfo.video.owner_id + "_" + atinfo.video.id + "_" + atinfo.video.access_key, count: 1})).items[0].player;
+				let url = "vk.com/video"+atinfo.video.owner_id+"_"+atinfo.video.id;
+				let vid_name = atinfo.video.title;
+				let preview_url = atinfo.video.image[atinfo.video.image.length - 1].url;
+				let vid_elem =
+				e("div", {class: "container-1ov-mD da-container"},
+					e("div",
+						{
+							style: {borderColor: "rgb(255, 0, 0)", maxWidth: "432px"},
+							class: "embedWrapper-lXpS3L da-embedWrapper embedFull-2tM8-- embed-IeVjo6 da-embedFull da-embed markup-2BOw-j da-markup"
+						},
+						e("div", {class: "grid-1nZz7S da-grid"},
+							[
+								e("div", {class: "embedTitle-3OXDkz da-embedTitle embedMargin-UO5XwE da-embedMargin"},
+									e("a",
+										{
+											class: "anchor-3Z-8Bb da-anchor anchorUnderlineOnHover-2ESHQB da-anchorUnderlineOnHover embedTitleLink-1Zla9e embedLink-1G1K1D embedTitle-3OXDkz da-embedTitleLink da-embedLink da-embedTitle",
+											href: url,
+											rel: "noreferrer noopener",
+											target: "_blank",
+											role: "button"
+										}, vid_name)),
+								e("iframe", 
+								{
+									src: player,
+									width: 400,
+									height: 225,
+									allowfullscreen: true
+								})
+							])));
+				content.video.push(vid_elem);
+				content.video.push(br());
 			}
 		}
 	}
@@ -225,7 +262,9 @@ var getTextForFwd = async function(msg)
 				br(),
 				cntnt.text,
 				cntnt.images,
-				cntnt.doc
+				cntnt.doc,
+				cntnt.wall,
+				cntnt.video
 			];
 			txt.push(textToQuote(out));
 			txt.push(textToQuote((await getTextForFwd(msg.fwd_messages[i]))));
@@ -348,7 +387,8 @@ var createMessageBox = function(name, msg, profile_image, isnew)
 		msg.text,
 		msg.images,
 		msg.doc,
-		msg.wall
+		msg.wall,
+		msg.video
 	];
 	var box = e("div",
 		{
@@ -458,7 +498,7 @@ module.exports = class VDisce {
 
 			login: login_,
 			password: password_,
-			scope: 'photos,users,messages,offline'
+			scope: 'photos,users,messages,offline, video'
 		});
 		var container_element = document.getElementById("auth_panel_vdisce");
 		try
@@ -547,6 +587,7 @@ module.exports = class VDisce {
 		{
 			if (context.isFromUser)
 			{
+				log("Message process");
 				let dialog_window = document.getElementById("vdisce-dialog");
 
 				let user = (await vk.api.users.get({user_ids: context.senderId, fields: "photo_50"}))[0];	
@@ -556,7 +597,7 @@ module.exports = class VDisce {
 				else
 					from_user = user;
 
-				if (context.payload.message.rand_id == 0 &&
+				if (context.payload.message.random_id == 0 &&
 					(dialog_window == null || (dialog_window !== null && dialog_window.getAttribute("vkid") !== user.id.toString())))
 				{
 					await notificationCall(user);
