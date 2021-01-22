@@ -29,6 +29,8 @@ var process_id = -1;
 
 var msg_input_text = "";
 
+var savedWin;
+
 var log = function(...x)
 {
 	if(x.length === 1)
@@ -90,6 +92,7 @@ var getContentFromMessage = async function(msg)
 	content.doc = [];
 	content.wall = [];
 	content.video = [];
+	content.audio = [];
 	if(typeof msg !== "undefined" && typeof msg.attachments !== "undefined")
 	{
 		photos_at_count++;
@@ -123,12 +126,6 @@ var getContentFromMessage = async function(msg)
 							ih = true;
 						else ih = false;
 						openPhoto(max_size, iw, ih);
-					},
-					onLoad: function()
-					{
-						photos_loaded++;
-						if (photos_at_count === photos_loaded)
-							scrollMessagesBottom();
 					}}));
 				content.images.push(br());
 			}
@@ -158,13 +155,7 @@ var getContentFromMessage = async function(msg)
 			else if (atinfo.type == "sticker")
 			{
 				photos_at_count++;
-				content.images.push(e("img", {src: atinfo.sticker.images[atinfo.sticker.images.length - 2].url,
-					onLoad: function()
-					{
-						photos_loaded++;
-						if (photos_at_count === photos_loaded)
-							scrollMessagesBottom();
-					}}));
+				content.images.push(e("img", {src: atinfo.sticker.images[atinfo.sticker.images.length - 2].url}));
 				content.images.push(br());
 			}
 			else if (atinfo.type == "wall")
@@ -218,11 +209,17 @@ var getContentFromMessage = async function(msg)
 									src: player,
 									width: 400,
 									height: 225,
-									allowfullscreen: true
+									allowFullScreen: true
 								})
 							])));
 				content.video.push(vid_elem);
 				content.video.push(br());
+			}
+			else if (atinfo.type == "audio")
+			{
+				let au_el = [e("code", null, atinfo.audio.title + " - " + atinfo.audio.artist), br(),
+					e("audio", {controls: "controls", src: atinfo.audio.url}), br()];
+				content.audio.push(au_el);
 			}
 		}
 	}
@@ -246,32 +243,6 @@ var textToQuote = function(text)
 	return elem;
 }
 
-var getTextForFwd = async function(msg)
-{
-	let txt = [];
-	if(typeof msg.fwd_messages !== "undefined")
-	{
-		for (var i = 0; i < msg.fwd_messages.length; i++)
-		{
-			let cntnt = (await getContentFromMessage(msg.fwd_messages[i]));
-			let uinfo = (await vk.api.messages.getById({message_ids: msg.fwd_messages[i].id, extended: true})).profiles[0];
-			let name = uinfo.first_name + " " + uinfo.last_name;
-			let out = 
-			[
-				e("span", {class: "username-1A8OIy da-username clickable-1bVtEA da-clickable", tabindex: "0"}, name),
-				br(),
-				cntnt.text,
-				cntnt.images,
-				cntnt.doc,
-				cntnt.wall,
-				cntnt.video
-			];
-			txt.push(textToQuote(out));
-			txt.push(textToQuote((await getTextForFwd(msg.fwd_messages[i]))));
-		}
-	}
-	return txt;
-}
 
 var openPhoto = async function(url, isWidth, isHeight)
 {
@@ -312,6 +283,21 @@ var isScrolled = function()
 	else return false;
 }
 
+var reloadSavedWin = function()
+{
+	/*var friens_list_div = document.querySelector("[class='container-1D34oG da-container']");
+	if (friens_list_div)
+	{
+		friens_list_div.innerHTML = savedWin;
+	}
+	else
+	{
+		document.querySelector("[class='chat-3bRxxu da-chat']").innerHTML = savedWin;
+	}*/
+	let d = document.getElementById("vdisce-dialog");
+	d.parentElement.parentElement.removeChild(d.parentElement);
+}
+
 var openDialogWin = async function(uid)
 {
 	log("Opening dialog...");
@@ -321,13 +307,23 @@ var openDialogWin = async function(uid)
 	photos_at_count = 0;
 	photos_loaded = 0;
 	var friens_list_div = document.querySelector("[class='container-1D34oG da-container']");
-	var chat_div = e("div", {class:"chat-3bRxxu da-chat", id: "vdisce-dialog", vkid: uid});
+	var chat_div = e("div", {class:"chat-3bRxxu da-chat", id: "vdisce-dialog", style:
+		{width: "80%", height: "80%", position: "absolute", zIndex: 10,
+		alignSelf: "center", borderRadius: "15px", boxShadow: "0 0 50px black"}, vkid: uid});
+	let chat_space = document.createElement("div");
 	if (friens_list_div)
-		BdApi.ReactDOM.render(chat_div, friens_list_div);
+	{
+		friens_list_div.insertBefore(chat_space, friens_list_div.firstChild);
+	}
 	else
-		BdApi.ReactDOM.render(chat_div, document.querySelector("[class='chat-3bRxxu da-chat']"))
+	{
+		let x = document.querySelector("[class='chat-3bRxxu da-chat']");
+		x.insertBefore(chat_space, x.lastChild);
+	}
+	BdApi.ReactDOM.render(chat_div, chat_space);
 	document.getElementById("vdisce-dialog").innerHTML = '<div class="messagesWrapper-1sRNjr da-messagesWrapper group-spacing-16"><div class="scroller-2LSbBU da-scroller auto-Ge5KZx scrollerBase-289Jih disableScrollAnchor-3V9UtP" dir="ltr" data-jump-section="global" tabindex="-1" style="overflow: hidden scroll; padding-right: 0px;"><div class="scrollerContent-WzeG7R da-scrollerContent content-3YMskv da-content"><div class="scrollerInner-2YIMLh da-scrollerInner" aria-label="Сообщения на " role="log" aria-orientation="vertical" data-list-id="chat-messages" tabindex="0" aria-live="off"></div></div></div></div><div id="vdisce-input-form"><input id="vdisce-input-msg"></input></div>';
 	let msg_space = document.getElementById("vdisce-dialog").querySelector("[class='scrollerInner-2YIMLh da-scrollerInner']");
+	window.onLoad = scrollMessagesBottom;
 	let spacer = document.createElement("div");
 	spacer.setAttribute("class", "scrollerSpacer-avRLaA da-scrollerSpacer");
 	msg_space.insertBefore(spacer, msg_space.lastChild);
@@ -349,6 +345,23 @@ var openDialogWin = async function(uid)
 	}
 	input_el.onkeyup = insend;
 
+	let close_button = e("button", {style:
+		{
+			width: "50px",
+			height: "50px",
+			position: "absolute",
+			zIndex: 11,
+			borderRadius: "30px",
+			fontSize: "xx-large",
+			alignSelf: "flex-end",
+			marginLeft: "-20px",
+			marginTop: "10px"
+		}, onClick: reloadSavedWin, id: "vdisce-close-button"}, "X");
+	let cl_b_space = document.createElement("p");
+	document.getElementById("vdisce-dialog").insertBefore(cl_b_space, document.getElementById("vdisce-dialog").lastChild);
+	BdApi.ReactDOM.render(close_button, cl_b_space);
+	document.getElementById("vdisce-dialog").replaceChild(document.getElementById("vdisce-close-button"), cl_b_space);
+
 	let msgList = [];
 	let block = [];
 	let n = 0;
@@ -363,7 +376,8 @@ var openDialogWin = async function(uid)
 	}
 	/*while (block.length == 200)*/
 
-	
+	window.onLoad = function() {alert(";asfdj;aosdifj");}
+
 	let usr = (await vk.api.users.get({user_ids: uid, fields: "photo_50"}))[0];
 	let content;
 	for (var i = 0; i < msgList.length; i++)
@@ -374,22 +388,15 @@ var openDialogWin = async function(uid)
 		else if(msgList[i].from_id == uid)
 			createMessageBox(usr.first_name + " " + usr.last_name, content, usr.photo_50);
 	}
-
-	if(photos_at_count === 0)
-		scrollMessagesBottom();
 }
 
 var createMessageBox = function(name, msg, profile_image, isnew)
 {
 
-	let out = 
-	[
-		msg.text,
-		msg.images,
-		msg.doc,
-		msg.wall,
-		msg.video
-	];
+	let out = [];
+	for (var key in msg) {
+		out.push(msg[key]);
+	}
 	var box = e("div",
 		{
 			class:"message-2qnXI6 da-message cozyMessage-3V1Y8y da-cozyMessage groupStart-23k01U da-groupStart wrapper-2a6GCs da-wrapper cozy-3raOZG da-cozy zalgo-jN1Ica da-zalgo",
@@ -402,13 +409,7 @@ var createMessageBox = function(name, msg, profile_image, isnew)
 				role: "document"
 			},
 			[
-				e("img", {class: "avatar-1BDn8e da-avatar clickable-1bVtEA da-clickable", alt: " ", src: profile_image,
-					onLoad: function()
-					{
-						photos_loaded++;
-						if (photos_at_count === photos_loaded)
-							scrollMessagesBottom();
-					}}),
+				e("img", {class: "avatar-1BDn8e da-avatar clickable-1bVtEA da-clickable", alt: " ", src: profile_image}),
 				e("h2", {class: "header-23xsNx da-header"},
 					e("span", {class: "headerText-3Uvj1Y da-headerText"},
 						e("span", {class: "username-1A8OIy da-username clickable-1bVtEA da-clickable", tabindex: "0"}, name))),
