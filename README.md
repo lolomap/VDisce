@@ -1,4 +1,6 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+![downloads](https://img.shields.io/github/downloads/lolomap/VDisce/total?color=gree)
+<img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/lolomap/VDisce">
 # VDisce
 Plugin for BetterDiscord. This plugin Integrates VK messanger to your Discord
 
