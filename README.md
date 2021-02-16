@@ -10,3 +10,6 @@ You need [BetterDiscord](https://betterdiscord.net/home/ "Download BetterDiscord
 1.  Download latest release
 2.  Copy files from archive to BD plugins folder (AppData/Roaming/BetterDiscord/plugins/)
 3.  Activate plugin and log in VK
+
+# Alert!
+Plugin does not support accounts with two factor auth now
